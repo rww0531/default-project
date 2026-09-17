@@ -61,7 +61,98 @@ const el = {
   log: document.getElementById('log'),
   playerSide: document.getElementById('player-side'),
   computerSide: document.getElementById('computer-side'),
+  soundBtn: document.getElementById('sound-btn'),
 };
+
+/* ── 音效（Web Audio API 合成，免外部音檔） ── */
+const SFX = (() => {
+  let ctx = null;
+  let out = null;
+  let muted = false;
+
+  function ensure() {
+    if (!ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      ctx = new AC();
+      out = ctx.createGain();
+      out.gain.value = 0.45;
+      out.connect(ctx.destination);
+    }
+    if (ctx.state === 'suspended') ctx.resume();
+    return out;
+  }
+
+  // 低頻撞擊聲（攻擊 / 挨打）
+  function thud(freq, sweep, gain, noiseGain, duration) {
+    const dest = ensure();
+    if (muted) return;
+    const t0 = ctx.currentTime;
+
+    const src = ctx.createBufferSource();
+    const len = Math.floor(ctx.sampleRate * duration);
+    src.buffer = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = src.buffer.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(1400, t0);
+    filter.frequency.exponentialRampToValueAtTime(180, t0 + duration);
+
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(noiseGain, t0);
+    g.gain.exponentialRampToValueAtTime(0.001, t0 + duration);
+
+    src.connect(filter);
+    filter.connect(g);
+    g.connect(dest);
+    src.start(t0);
+    src.stop(t0 + duration + 0.05);
+
+    const osc = ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, t0);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(30, freq + sweep), t0 + duration);
+
+    const og = ctx.createGain();
+    og.gain.setValueAtTime(gain, t0);
+    og.gain.exponentialRampToValueAtTime(0.001, t0 + duration);
+
+    osc.connect(og);
+    og.connect(dest);
+    osc.start(t0);
+    osc.stop(t0 + duration + 0.05);
+  }
+
+  function tone(freq, dur, gain, type, delay) {
+    const dest = ensure();
+    if (muted) return;
+    const t0 = ctx.currentTime + (delay || 0);
+    const osc = ctx.createOscillator();
+    osc.type = type || 'square';
+    osc.frequency.value = freq;
+
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(gain, t0 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+
+    osc.connect(g);
+    g.connect(dest);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.05);
+  }
+
+  return {
+    playCard() { tone(520, 0.07, 0.12, 'triangle'); },
+    attack() { thud(160, -80, 0.9, 0.5, 0.22); tone(200, 0.12, 0.25, 'sawtooth'); },
+    damage() { thud(95, -40, 0.9, 0.55, 0.3); tone(130, 0.18, 0.3, 'sawtooth'); },
+    tie() { tone(320, 0.08, 0.16, 'square'); tone(320, 0.08, 0.16, 'square', 0.13); },
+    win() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.25, 0.24, 'triangle', i * 0.13)); },
+    lose() { [392, 330, 262, 196].forEach((f, i) => tone(f, 0.28, 0.24, 'sawtooth', i * 0.17)); },
+    setMuted(m) { muted = m; },
+  };
+})();
 
 /* ── 工具 ── */
 function drawHand() {
@@ -110,6 +201,7 @@ function pickComputerCard() {
 function playRound(playerCard) {
   if (state.busy || state.gameOver) return;
   state.busy = true;
+  SFX.playCard();
 
   const computerCard = pickComputerCard();
 
@@ -173,11 +265,14 @@ function applyDamage(o) {
   if (o.winner === 'player' && o.damage > 0) {
     state.computerHP = Math.max(0, state.computerHP - o.damage);
     flashDamage(el.computerSide);
+    SFX.attack();
   }
   if (o.winner === 'computer' && o.damage > 0) {
     state.playerHP = Math.max(0, state.playerHP - o.damage);
     flashDamage(el.playerSide);
+    SFX.damage();
   }
+  if (o.winner === null) SFX.tie();
   renderHP();
 }
 
@@ -211,10 +306,12 @@ function endGame(winner) {
     el.resultText.textContent = '🎉 你贏了！電腦血量歸零！';
     el.resultText.className = 'win';
     log('🏆 勝利！把電腦的血量打歸零了！', 'good');
+    SFX.win();
   } else {
     el.resultText.textContent = '💀 你輸了…你的血量歸零了。';
     el.resultText.className = 'lose';
     log('❌ 敗北…你的血量歸零了。', 'bad');
+    SFX.lose();
   }
 }
 
@@ -269,6 +366,14 @@ function log(msg, cls) {
 
 /* ── 重新開始 ── */
 el.restartBtn.addEventListener('click', restart);
+
+/* ── 音效開關 ── */
+let soundMuted = false;
+el.soundBtn.addEventListener('click', () => {
+  soundMuted = !soundMuted;
+  SFX.setMuted(soundMuted);
+  el.soundBtn.textContent = soundMuted ? '🔇' : '🔊';
+});
 
 function restart() {
   state.playerHP = MAX_HP;

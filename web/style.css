@@ -34,8 +34,29 @@ body {
 }
 
 header {
+  position: relative;
   text-align: center;
   margin-bottom: 24px;
+}
+
+.sound-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  font-size: 1.3rem;
+  cursor: pointer;
+  color: var(--text);
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+
+.sound-btn:hover {
+  transform: scale(1.1);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 header h1 {
