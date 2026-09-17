@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>✊✋✌️ 猜拳卡牌對戰</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>✊✋✌️ 猜拳卡牌對戰</h1>
+      <p class="subtitle">出牌攻擊！誰先將對方血量歸零誰就獲勝</p>
+    </header>
+
+    <section id="arena">
+      <!-- 玩家 -->
+      <div class="side" id="player-side">
+        <div class="side-header">
+          <h2>你</h2>
+          <div class="hp-bar">
+            <div class="hp-fill" id="player-hp-fill"></div>
+          </div>
+          <span class="hp-text" id="player-hp-text"></span>
+        </div>
+        <div class="hand-label">← 你的手牌，點擊出牌</div>
+        <div class="card-hand" id="player-hand"></div>
+      </div>
+
+      <!-- 對戰區 -->
+      <div id="battle-zone">
+        <div class="round-info">第 <span id="round-num">1</span> 回合</div>
+        <div class="play-row">
+          <div class="play-card empty" id="player-play"></div>
+          <div class="vs">VS</div>
+          <div class="play-card empty" id="computer-play"></div>
+        </div>
+        <div id="result-text"></div>
+        <button id="restart-btn" hidden>🔄 再戰一場</button>
+      </div>
+
+      <!-- 電腦 -->
+      <div class="side" id="computer-side">
+        <div class="side-header">
+          <h2>電腦</h2>
+          <div class="hp-bar">
+            <div class="hp-fill" id="computer-hp-fill"></div>
+          </div>
+          <span class="hp-text" id="computer-hp-text"></span>
+        </div>
+        <div class="hand-label">電腦的手牌（❓）→</div>
+        <div class="card-hand" id="computer-hand"></div>
+      </div>
+    </section>
+
+    <section id="log-section">
+      <h3>📜 對戰紀錄</h3>
+      <ul id="log"></ul>
+    </section>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
